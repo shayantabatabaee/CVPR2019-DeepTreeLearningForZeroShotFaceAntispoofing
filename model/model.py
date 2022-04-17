@@ -278,6 +278,33 @@ class Model:
             print('\n    Time taken for epoch {} is {:3g} sec'.format(epoch + 1, time.time() - start))
         return 0
 
+    def evaluate(self, val):
+        config = self.config
+        step_per_epoch_val = config.STEPS_PER_EPOCH_VAL
+
+        y = np.zeros((0, 1))
+        y_hat = np.zeros((0, 1))
+
+        if val is not None:
+            it_val = val.get_feed()
+            start = time.time()
+            self.dtn_op = tf.compat.v1.train.AdamOptimizer(config.LEARNING_RATE, beta1=0.5)
+            ''' eval phase'''
+            for step in range(step_per_epoch_val):
+                image, dmap, labels = next(it_val)
+                dmap_pred, cls_pred, route_value, leaf_node_mask = self.dtn(image, labels, False)
+                cls = np.asarray(cls_pred)[:, :, 0].T
+                leaf = np.asarray(leaf_node_mask)[:, :, 0].T
+                _y_hat = np.sum(leaf * cls, axis=1)[:, np.newaxis]
+                _y = np.asarray(labels)
+                y = np.vstack((y, _y))
+                y_hat = np.vstack((y_hat, _y_hat))
+            # time of evaluation
+            print('\n    Time taken for evaluation is {:3g} sec'.format(time.time() - start))
+            np.seterr(divide='warn')
+
+        return y, y_hat
+
     def train_one_step(self, data_batch, step, training):
         dtn = self.dtn
         dtn_op = self.dtn_op
