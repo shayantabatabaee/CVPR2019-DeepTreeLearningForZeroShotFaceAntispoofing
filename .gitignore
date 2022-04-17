@@ -1,0 +1,6 @@
+.env
+.idea
+data
+data_val
+data_test
+log

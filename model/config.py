@@ -44,7 +44,6 @@ class Config(object):
     }
 
     # Training Meta
-    STEPS_PER_EPOCH = 1000
     MAX_EPOCH = 100
     NUM_EPOCHS_PER_DECAY = 12.0   # Epochs after which learning rate decays
     BATCH_SIZE = 8

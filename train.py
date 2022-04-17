@@ -30,19 +30,24 @@ from model.model import Model
 def main(argv=None):
     # Configurations
     config = Config()
-    config.DATA_DIR = ['/data/']
+    config.DATA_DIR = './data/'
+    config.DATA_DIR_VAL = './data_val/'
     config.LOG_DIR = './log/model'
-    config.MODE = 'training'
-    config.STEPS_PER_EPOCH_VAL = 180
-    config.display()
 
     # Get images and labels.
     dataset_train = Dataset(config, 'train')
+    config.STEPS_PER_EPOCH = dataset_train.get_dataset_count() // config.BATCH_SIZE
+
+    dataset_validation = Dataset(config, 'validation')
+    config.STEPS_PER_EPOCH_VAL = dataset_validation.get_dataset_count() // config.BATCH_SIZE
+    config.display()
+
     # Build a Graph
     model = Model(config)
-
     # Train the model
     model.compile()
-    model.train(dataset_train, None)
+    model.train(dataset_train, dataset_validation)
 
-main()
+
+if __name__ == '__main__':
+    main()

@@ -195,12 +195,14 @@ class Model:
         self.last_epoch = 0
         self.checkpoint_manager = []
 
-    def compile(self):
+    def compile(self, checkpoint_num=None):
         checkpoint_dir = self.config.LOG_DIR
         checkpoint = tf.train.Checkpoint(dtn=self.dtn,
                                          dtn_optimizer=self.dtn_op)
-        self.checkpoint_manager = tf.train.CheckpointManager(checkpoint, checkpoint_dir, max_to_keep=30)
+        self.checkpoint_manager = tf.train.CheckpointManager(checkpoint, checkpoint_dir, max_to_keep=50)
         last_checkpoint = self.checkpoint_manager.latest_checkpoint
+        if checkpoint_num is not None:
+            last_checkpoint = last_checkpoint.split('-')[0] + '-' + str(checkpoint_num)
         checkpoint.restore(last_checkpoint)
         if last_checkpoint:
             self.last_epoch = int(last_checkpoint.split('-')[-1])
@@ -215,10 +217,10 @@ class Model:
         epochs = config.MAX_EPOCH
 
         # data stream
-        it = train.feed
+        it = train.get_feed()
         global_step = self.last_epoch * step_per_epoch
         if val is not None:
-            it_val = val.feed
+            it_val = val.get_feed()
         for epoch in range(self.last_epoch, epochs):
             start = time.time()
             # define the
@@ -260,7 +262,7 @@ class Model:
                                  self.depth_map_loss(depth_map_loss, val=1),
                                  self.class_loss(class_loss, val=1),
                                  self.route_loss(route_loss, val=1), eigenvalue, trace,
-                                 self.recon_loss(uniq_loss, val=1),
+                                 self.uniq_loss(uniq_loss, val=1),
                                  spoof_counts[0], spoof_counts[1], spoof_counts[2], spoof_counts[3],
                                  spoof_counts[4], spoof_counts[5], spoof_counts[6], spoof_counts[7], ), end='\r')
                     # plot the figure
