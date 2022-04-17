@@ -28,7 +28,7 @@ class Config(object):
     that need to be changed.
     """
     # GPU Usage
-    GPU_USAGE = 1
+    GPU_USAGE = 0
 
     # Log and Model Storage Default
     LOG_DIR = './log/DTN'
@@ -45,9 +45,9 @@ class Config(object):
 
     # Training Meta
     STEPS_PER_EPOCH = 1000
-    MAX_EPOCH = 40
+    MAX_EPOCH = 100
     NUM_EPOCHS_PER_DECAY = 12.0   # Epochs after which learning rate decays
-    BATCH_SIZE = 32
+    BATCH_SIZE = 8
     LEARNING_RATE = 0.001          # Initial learning rate.
     LEARNING_MOMENTUM = 0.999     # The decay to use for the moving average.
 
