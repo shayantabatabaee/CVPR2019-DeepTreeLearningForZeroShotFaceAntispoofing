@@ -199,7 +199,7 @@ class Model:
         checkpoint_dir = self.config.LOG_DIR
         checkpoint = tf.train.Checkpoint(dtn=self.dtn,
                                          dtn_optimizer=self.dtn_op)
-        self.checkpoint_manager = tf.train.CheckpointManager(checkpoint, checkpoint_dir, max_to_keep=50)
+        self.checkpoint_manager = tf.train.CheckpointManager(checkpoint, checkpoint_dir, max_to_keep=80)
         last_checkpoint = self.checkpoint_manager.latest_checkpoint
         if checkpoint_num is not None:
             last_checkpoint = last_checkpoint.split('-')[0] + '-' + str(checkpoint_num)
@@ -326,7 +326,7 @@ class Model:
             unsupervised_loss = 2*route_loss + 0.001*uniq_loss
 
             # total loss
-            if step > 10000:
+            if step > 10 * self.config.STEPS_PER_EPOCH:
                 loss = supervised_loss + unsupervised_loss
             else:
                 loss = supervised_loss
