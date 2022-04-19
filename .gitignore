@@ -3,4 +3,6 @@
 data
 data_val
 data_test
+saved_model
+saved_weight
 log

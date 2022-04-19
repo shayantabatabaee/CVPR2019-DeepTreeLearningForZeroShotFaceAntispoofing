@@ -65,7 +65,10 @@ class Linear(layers.Layer):
         self.eigenvalue = 0.
         self.trace = 0.
 
-    def call(self, x, mask, training):
+    @tf.function
+    def call(self, inputs, training):
+        x = inputs[0]
+        mask = inputs[1]
         norm_v = self.v / (tf.norm(self.v) + 1e-8)
         norm_v_t = tf.transpose(norm_v, [1, 0])
         num_of_visit = tf.reduce_sum(mask)
@@ -102,25 +105,28 @@ class Linear(layers.Layer):
             route_loss = 0.
             uniq_loss = 0.
 
-        return route_value, route_loss, uniq_loss
+        return route_value, route_loss, uniq_loss, self.mu_of_visit, self.eigenvalue, self.trace
 
 
 class Downsample(tf.keras.Model):
     def __init__(self, filters, size, padding='SAME', apply_batchnorm=True):
         super(Downsample, self).__init__()
+        self.filters = filters
+        self.size = size
+        self.padding = padding
         self.apply_batchnorm = apply_batchnorm
         initializer = tf.random_normal_initializer(0., 0.02)
-        filters = int(filters)
-        self.conv1 = layers.Conv2D(filters,
-                                   (size, size),
+        self.conv1 = layers.Conv2D(int(self.filters),
+                                   (self.size, self.size),
                                    strides=2,
-                                   padding=padding,
+                                   padding=self.padding,
                                    kernel_initializer=initializer,
                                    use_bias=False)
         if self.apply_batchnorm:
             self.batchnorm = tf.keras.layers.BatchNormalization()
 
-    def call(self, x, training):
+    def call(self, inputs, training):
+        x = inputs
         x = self.conv1(x)
         if self.apply_batchnorm:
             x = self.batchnorm(x, training=training)
@@ -144,7 +150,8 @@ class Upsample(tf.keras.Model):
         if self.apply_dropout:
             self.dropout = tf.keras.layers.Dropout(0.5)
 
-    def call(self, x, training):
+    def call(self, inputs, training):
+        x = inputs
         x = self.up_conv(x)
         x = self.batchnorm(x, training=training)
         if self.apply_dropout:
@@ -169,7 +176,8 @@ class Conv(tf.keras.Model):
         if self.apply_batchnorm:
             self.batchnorm = layers.BatchNormalization()
 
-    def call(self, x, training):
+    def call(self, inputs, training):
+        x = inputs
         x = self.conv1(x)
         if self.apply_batchnorm:
             x = self.batchnorm(x, training=training)
@@ -194,7 +202,8 @@ class Dense(tf.keras.Model):
         if self.apply_dropout:
             self.dropout = tf.keras.layers.Dropout(0.3)
 
-    def call(self, x, training):
+    def call(self, inputs, training):
+        x = inputs
         x = self.dense(x)
         if self.apply_batchnorm:
             x = self.batchnorm(x, training=training)
@@ -244,7 +253,8 @@ class CRU(tf.keras.Model):
         self.batchnorm3 = tf.keras.layers.BatchNormalization()
         self.batchnorm4 = tf.keras.layers.BatchNormalization()
 
-    def call(self, x, training):
+    def call(self, inputs, training):
+        x = inputs
         # first residual block
         _x = self.conv1(x)
         _x = self.batchnorm1(_x, training=training)
@@ -280,8 +290,9 @@ class TRU(tf.keras.Model):
         self.flatten = layers.Flatten()
         self.project = Linear(idx, alpha, beta, input_dim=2048)
 
-
-    def call(self, x, mask, training):
+    def call(self, inputs, training):
+        x = inputs[0]
+        mask = inputs[1]
         # Downsampling
         x_small = self.conv1(x, training=training)
         depth = 0
@@ -295,13 +306,14 @@ class TRU(tf.keras.Model):
         x_flatten = self.flatten(tf.nn.avg_pool(x_small, ksize=3, strides=2, padding='SAME'))
 
         # PCA Projection
-        route_value, route_loss, uniq_loss = self.project(x_flatten, mask, training=training)
+        route_value, route_loss, uniq_loss, mu_of_visit, eigenvalue, trace = self.project((x_flatten, mask),
+                                                                                          training=training)
 
         # Generate the splitting mask
         mask_l = mask * tf.cast(tf.greater_equal(route_value, tf.constant(0.)), tf.float32)
         mask_r = mask * tf.cast(tf.less(route_value, tf.constant(0.)), tf.float32)
 
-        return [mask_l, mask_r], route_value, [route_loss, uniq_loss]
+        return [mask_l, mask_r], route_value, [route_loss, uniq_loss], mu_of_visit, eigenvalue, trace
 
 
 class SFL(tf.keras.Model):
@@ -324,7 +336,8 @@ class SFL(tf.keras.Model):
 
         self.dropout = tf.keras.layers.Dropout(0.3)
 
-    def call(self, x, training):
+    def call(self, inputs, training):
+        x = inputs
         # depth map branch
         xd = self.cru1(x)
         xd = self.conv1(xd)

@@ -33,6 +33,8 @@ import cv2
 from model.utils import CRU, TRU, SFL, Conv, Downsample, Error
 from model.loss import l1_loss, l2_loss, leaf_l1_loss, leaf_l2_loss, leaf_l1_score
 
+MODEL_SAVED_PATH='./saved_model/'
+WEIGHT_SAVED_PATH='./saved_weight/'
 
 ############################################################
 #  Plot the figures
@@ -93,8 +95,9 @@ class DTN(tf.keras.models.Model):
         self.sfl6 = SFL(filters)
         self.sfl7 = SFL(filters)
 
-    @tf.function
-    def call(self, x, label, training):
+    def call(self, inputs, training):
+        x = inputs[0]
+        label = inputs[1]
         if training:
             mask_spoof = label
             mask_live = 1 - label
@@ -104,23 +107,29 @@ class DTN(tf.keras.models.Model):
         ''' Tree Level 1 '''
         x = self.conv1(x, training)
         x_cru0 = self.cru0(x)
-        x_tru0, route_value0, tru0_loss = self.tru0(x_cru0, mask_spoof, training)
+        x_tru0, route_value0, tru0_loss, mu_of_visit0, eigenvalue0, trace0 = self.tru0((x_cru0, mask_spoof), training)
 
         ''' Tree Level 2 '''
         x_cru00 = self.cru1(x_cru0, training)
         x_cru01 = self.cru2(x_cru0, training)
-        x_tru00, route_value00, tru00_loss = self.tru1(x_cru00, x_tru0[0], training)
-        x_tru01, route_value01, tru01_loss = self.tru2(x_cru01, x_tru0[1], training)
+        x_tru00, route_value00, tru00_loss, mu_of_visit1, eigenvalue1, trace1 = self.tru1((x_cru00, x_tru0[0]),
+                                                                                          training)
+        x_tru01, route_value01, tru01_loss, mu_of_visit2, eigenvalue2, trace2 = self.tru2((x_cru01, x_tru0[1]),
+                                                                                          training)
 
         ''' Tree Level 3 '''
         x_cru000 = self.cru3(x_cru00, training)
         x_cru001 = self.cru4(x_cru00, training)
         x_cru010 = self.cru5(x_cru01, training)
         x_cru011 = self.cru6(x_cru01, training)
-        x_tru000, route_value000, tru000_loss = self.tru3(x_cru000, x_tru00[0], training)
-        x_tru001, route_value001, tru001_loss = self.tru4(x_cru001, x_tru00[1], training)
-        x_tru010, route_value010, tru010_loss = self.tru5(x_cru010, x_tru01[0], training)
-        x_tru011, route_value011, tru011_loss = self.tru6(x_cru011, x_tru01[1], training)
+        x_tru000, route_value000, tru000_loss, mu_of_visit3, eigenvalue3, trace3 = self.tru3((x_cru000, x_tru00[0]),
+                                                                                             training)
+        x_tru001, route_value001, tru001_loss, mu_of_visit4, eigenvalue4, trace4 = self.tru4((x_cru001, x_tru00[1]),
+                                                                                             training)
+        x_tru010, route_value010, tru010_loss, mu_of_visit5, eigenvalue5, trace5 = self.tru5((x_cru010, x_tru01[0]),
+                                                                                             training)
+        x_tru011, route_value011, tru011_loss, mu_of_visit6, eigenvalue6, trace6 = self.tru6((x_cru011, x_tru01[1]),
+                                                                                             training)
 
         ''' Tree Level 4 '''
         map0, cls0 = self.sfl0(x_cru000, training)
@@ -152,27 +161,27 @@ class DTN(tf.keras.models.Model):
                           tru000_loss[0], tru001_loss[0], tru010_loss[0], tru011_loss[0]]
             recon_loss = [tru0_loss[1], tru00_loss[1], tru01_loss[1],
                           tru000_loss[1], tru001_loss[1], tru010_loss[1], tru011_loss[1]]
-            mu_update = [self.tru0.project.mu_of_visit+0,
-                         self.tru1.project.mu_of_visit+0,
-                         self.tru2.project.mu_of_visit+0,
-                         self.tru3.project.mu_of_visit+0,
-                         self.tru4.project.mu_of_visit+0,
-                         self.tru5.project.mu_of_visit+0,
-                         self.tru6.project.mu_of_visit+0]
-            eigenvalue = [self.tru0.project.eigenvalue,
-                          self.tru1.project.eigenvalue,
-                          self.tru2.project.eigenvalue,
-                          self.tru3.project.eigenvalue,
-                          self.tru4.project.eigenvalue,
-                          self.tru5.project.eigenvalue,
-                          self.tru6.project.eigenvalue]
-            trace = [self.tru0.project.trace,
-                     self.tru1.project.trace,
-                     self.tru2.project.trace,
-                     self.tru3.project.trace,
-                     self.tru4.project.trace,
-                     self.tru5.project.trace,
-                     self.tru6.project.trace]
+            mu_update = [mu_of_visit0,
+                         mu_of_visit1,
+                         mu_of_visit2,
+                         mu_of_visit3,
+                         mu_of_visit4,
+                         mu_of_visit5,
+                         mu_of_visit6]
+            eigenvalue = [eigenvalue0,
+                          eigenvalue1,
+                          eigenvalue2,
+                          eigenvalue3,
+                          eigenvalue4,
+                          eigenvalue5,
+                          eigenvalue6]
+            trace = [trace0,
+                     trace1,
+                     trace2,
+                     trace3,
+                     trace4,
+                     trace5,
+                     trace6]
 
             return maps, clss, route_value, leaf_node_mask, [route_loss, recon_loss], mu_update, eigenvalue, trace
         else:
@@ -292,7 +301,7 @@ class Model:
             ''' eval phase'''
             for step in range(step_per_epoch_val):
                 image, dmap, labels = next(it_val)
-                dmap_pred, cls_pred, route_value, leaf_node_mask = self.dtn(image, labels, False)
+                dmap_pred, cls_pred, route_value, leaf_node_mask = self.dtn([image, labels], False)
                 cls = np.asarray(cls_pred)[:, :, 0].T
                 leaf = np.asarray(leaf_node_mask)[:, :, 0].T
                 _y_hat = np.sum(leaf * cls, axis=1)[:, np.newaxis]
@@ -311,7 +320,7 @@ class Model:
         image, dmap, labels = data_batch
         with tf.GradientTape() as tape:
             dmap_pred, cls_pred, route_value, leaf_node_mask, tru_loss, mu_update, eigenvalue, trace =\
-                dtn(image, labels, True)
+                dtn([image, labels], True)
 
             # supervised feature loss
             depth_map_loss = leaf_l1_loss(dmap_pred, tf.image.resize(dmap, [32, 32]), leaf_node_mask)
@@ -356,3 +365,25 @@ class Model:
         _to_plot = [image, dmap, dmap_pred[0]]
 
         return depth_map_loss, class_loss, route_loss, uniq_loss, spoof_counts, eigenvalue, trace, _to_plot
+
+    def save(self):
+        x = np.ones((1, 256, 256, 3), dtype=np.float32)
+        label = np.ones((1, 1), dtype=np.float32)
+        # y = self.dtn((x, np.ones((1, 1), dtype=np.float32)), training=False)
+        # self.dtn.save('./save/')
+        self.dtn._set_inputs((x, label), training=False)
+        os.makedirs(MODEL_SAVED_PATH)
+        tf.saved_model.save(self.dtn, MODEL_SAVED_PATH)
+
+    def load(self):
+        self.dtn = tf.saved_model.load(MODEL_SAVED_PATH)
+
+    def save_weight(self):
+        x = np.ones((1, 256, 256, 3), dtype=np.float32)
+        label = np.ones((1, 1), dtype=np.float32)
+        y = self.dtn((x, label), training=False)
+        os.makedirs(WEIGHT_SAVED_PATH)
+        self.dtn.save_weights(WEIGHT_SAVED_PATH)
+
+    def load_weight(self):
+        self.dtn.load_weights(WEIGHT_SAVED_PATH)
