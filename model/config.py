@@ -44,7 +44,7 @@ class Config(object):
     }
 
     # Training Meta
-    MAX_EPOCH = 100
+    MAX_EPOCH = 20
     NUM_EPOCHS_PER_DECAY = 12.0   # Epochs after which learning rate decays
     BATCH_SIZE = 8
     LEARNING_RATE = 0.001          # Initial learning rate.

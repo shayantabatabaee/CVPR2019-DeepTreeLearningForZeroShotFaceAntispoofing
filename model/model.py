@@ -326,7 +326,7 @@ class Model:
             unsupervised_loss = 2*route_loss + 0.001*uniq_loss
 
             # total loss
-            if step > 10 * self.config.STEPS_PER_EPOCH:
+            if step > 3 * self.config.STEPS_PER_EPOCH:
                 loss = supervised_loss + unsupervised_loss
             else:
                 loss = supervised_loss

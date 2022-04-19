@@ -28,8 +28,10 @@ class Dataset:
 
     def __init__(self, config, mode):
         self.config = config
+        is_shuffling = False
         if mode == 'train':
             data_dir = self.config.DATA_DIR
+            is_shuffling = True
         elif mode == 'validation':
             data_dir = self.config.DATA_DIR_VAL
         elif mode == 'test':
@@ -39,7 +41,7 @@ class Dataset:
 
         self.__features, self.__labels = self.__load_files(data_dir)
         self.__dataset_count = len(self.__features)
-        self.__input_tensors = self.inputs_for_training(self.config)
+        self.__input_tensors = self.inputs_for_training(self.config, is_shuffling)
         self.__feed = iter(self.__input_tensors)
 
     def get_dataset_count(self):
@@ -48,7 +50,7 @@ class Dataset:
     def get_feed(self):
         return self.__feed
 
-    def inputs_for_training(self, config):
+    def inputs_for_training(self, config, is_shuffling):
         def generator():
             for i in range(0, self.__dataset_count):
                 yield self.__features[i], self.__labels[i]
@@ -56,6 +58,8 @@ class Dataset:
         dataset = tf.data.Dataset.from_generator(generator, output_types=(tf.float32, tf.uint8),
                                                  output_shapes=([config.IMAGE_SIZE, config.IMAGE_SIZE, 3], ()),
                                                  args=[])
+        if is_shuffling:
+            dataset = dataset.shuffle(self.config.BATCH_SIZE, reshuffle_each_iteration=True)
         dataset = dataset.repeat(-1)
         dataset = dataset.map(map_func=self.__parse_fn)
         dataset = dataset.batch(batch_size=self.config.BATCH_SIZE).prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
@@ -75,6 +79,7 @@ class Dataset:
                         data = data[np.where(label == 1)]
                         label = label[np.where(label == 1)]
                     features.extend(data)
+                    label = -label + 1
                     labels.extend(label)
         temp_array = list(zip(features, labels))
         random.Random(0).shuffle(temp_array)
@@ -89,9 +94,11 @@ class Dataset:
             image = x / 255
             dmap = None
             if y == 1:
-                dmap = np.zeros((dmap_size, dmap_size, 1), dtype=np.float32)
-            elif y == 0:
+                # Spoof
                 dmap = np.ones((dmap_size, dmap_size, 1), dtype=np.float32)
+            elif y == 0:
+                # Live
+                dmap = np.zeros((dmap_size, dmap_size, 1), dtype=np.float32)
 
             label = np.reshape(y, (1,))
             dmap1 = dmap * (1-label)
