@@ -17,11 +17,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import sys
-from datetime import datetime
-import time
-
-import tensorflow as tf
 from model.dataset import Dataset
 from model.config import Config
 from model.model import Model
@@ -36,8 +31,6 @@ def main(argv=None):
 
     # Get images and labels.
     dataset_train = Dataset(config, 'train')
-    config.STEPS_PER_EPOCH = dataset_train.get_dataset_count() // config.BATCH_SIZE
-
     dataset_validation = Dataset(config, 'validation')
     config.STEPS_PER_EPOCH_VAL = dataset_validation.get_dataset_count() // config.BATCH_SIZE
     config.display()
