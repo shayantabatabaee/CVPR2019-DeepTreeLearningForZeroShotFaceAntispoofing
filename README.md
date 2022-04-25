@@ -1,23 +1,22 @@
 # Deep Tree Learning for Zero-shot Face Anti-Spoofing
-##Changes
+## Changes
 Some features were added compared to original repository.
 <br>
-<br>
-####Setup
+#### Setup
 For installing dependencies please run: 
 <pre><code>pip install -r requirements.txt</code></pre>
-####Dataset
+#### Dataset
 To start training you should just modified `__load_files` method in `dataset.py` file.
 For better memory optimization and performance of training, all data loads into memory and feeds to model using a generator.
 <br>
 There is no need to have depth map since i assume dataset consist of replay attack, photo attack and live.
 Note that the spoof label is `1` and live label is `0`.
-####Evaluate
+#### Evaluate
 To evaluate model run:
 <pre><code>.evaluate(validation_dataset)</code></pre>
-####Save
+#### Save
 There are two methods for saving model, use `save` to save graph with weights. Also you can use `save_weight` to only save weights of model without graph
-####Load
+#### Load
 Both `load` and `load_weight` can be used for loading model
 ##
 Yaojie Liu, Joel Stehouwer, Amin Jourabloo, Xiaoming Liu
