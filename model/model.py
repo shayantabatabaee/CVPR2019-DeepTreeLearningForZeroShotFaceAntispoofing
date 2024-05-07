@@ -335,7 +335,7 @@ class Model:
             unsupervised_loss = 2*route_loss + 0.001*uniq_loss
 
             # total loss
-            if step > 10000:
+            if step > 300000:
                 loss = supervised_loss + unsupervised_loss
             else:
                 loss = supervised_loss

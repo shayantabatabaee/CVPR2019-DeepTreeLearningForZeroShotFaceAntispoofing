@@ -25,21 +25,21 @@ from model.model import Model
 def main(argv=None):
     # Configurations
     config = Config()
-    config.DATA_DIR = './data/'
-    config.DATA_DIR_VAL = './data_val/'
+    config.DATA_DIR = '/media/disk-2/fold1/train'
+    # config.DATA_DIR_VAL = './data_laplacian_300/data_val'
     config.LOG_DIR = './log/model'
 
     # Get images and labels.
     dataset_train = Dataset(config, 'train')
-    dataset_validation = Dataset(config, 'validation')
-    config.STEPS_PER_EPOCH_VAL = dataset_validation.get_dataset_count() // config.BATCH_SIZE
+    #dataset_validation = Dataset(config, 'validation')
+    config.STEPS_PER_EPOCH_VAL = 180
     config.display()
 
     # Build a Graph
     model = Model(config)
     # Train the model
     model.compile()
-    model.train(dataset_train, dataset_validation)
+    model.train(dataset_train, None)
 
 
 if __name__ == '__main__':

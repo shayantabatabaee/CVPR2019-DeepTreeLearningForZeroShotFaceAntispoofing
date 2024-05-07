@@ -66,17 +66,34 @@ class Dataset:
         features = []
         labels = []
         for key in os.listdir(path):
-            for file_name in os.listdir(os.path.join(path, key)):
-                if 'dataset_' in file_name:
-                    file = np.load(os.path.join(path, key, file_name), allow_pickle=True)
-                    data = file[:, 1]
-                    label = file[:, 0]
-                    if key == 'mobile_distance':
-                        data = data[np.where(label == 1)]
-                        label = label[np.where(label == 1)]
-                    features.extend(data)
-                    label = -label + 1
-                    labels.extend(label)
+            if key == 'mobile_distance':
+                for dir in os.listdir(os.path.join(path, key)):
+                    folder_path = os.path.join(path, key, dir)
+                    for file_name in os.listdir(folder_path):
+                        if 'dataset_' in file_name:
+                            file = np.load(os.path.join(folder_path, file_name), allow_pickle=True)
+                            data = file[:, 1]
+                            label = file[:, 0]
+                            label = -label + 1
+                            # for i in range(label.shape[0]):
+                            #     if label[i]==1:
+                            #         labels.append(label[i])
+                            #         features.append(data[i])
+                            labels.extend(label)
+                            features.extend(data)
+            else:
+                for file_name in os.listdir(os.path.join(path, key)):
+                    if 'dataset_' in file_name:
+                        file = np.load(os.path.join(path, key, file_name), allow_pickle=True)
+                        data = file[:, 1]
+                        label = file[:, 0]
+                        label = -label + 1
+                        # for i in range(label.shape[0]):
+                        #     if label[i]==1:
+                        #         labels.append(label[i])
+                        #         features.append(data[i])
+                        labels.extend(label)
+                        features.extend(data)
         temp_array = list(zip(features, labels))
         random.Random(0).shuffle(temp_array)
         features, labels = zip(*temp_array)
